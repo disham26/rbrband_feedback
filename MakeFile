@@ -1,0 +1,10 @@
+.PHONY: bootstrap clean all compile tests deps docs prodtest test
+debug:
+
+go run main.go page.go
+
+prodtest:
+	ENV_NAME=prod go test -v
+
+test:
+	go test -v
