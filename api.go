@@ -2,14 +2,24 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/mux"
 	mgo "gopkg.in/mgo.v2"
 )
 
+//ProfileResponse struct
 type ProfileResponse struct {
 	Success bool `json:"success"`
+}
+
+//BandResponse struct to show the bands with which a user is associated
+type BandResponse struct {
+	Success bool   `json:"success"`
+	Data    []Band `json:"data"`
+	User    User   `json:"user"`
 }
 
 //ProfileLogout is called when the profile of the musician is logged out
@@ -90,6 +100,30 @@ func SignupMusician(session *mgo.Session) func(http.ResponseWriter, *http.Reques
 	}
 }
 
+//CreateBand api to create a band
+func CreateBand(session *mgo.Session, bandName string, bandLocation string, bandContact string, bandCharge string, bandGenre string, bandDesc string, musicianID string) error {
+	var band Band
+	var users []User
+	users = append(users, GetMusician(session, musicianID))
+	band.BandCreator = musicianID
+	band.Members = users
+	band.BandName = bandName
+	band.Location = bandLocation
+	band.Contact = bandContact
+	band.Charges, _ = strconv.Atoi(bandCharge)
+	band.Genre = bandGenre
+	band.Description = bandDesc
+	new_band, err := InsertBand(session, band)
+	if err == nil {
+		//Update the Musician with bands associated
+		//user := GetMusician(session, musicianID)
+		err := UpdateBandCountMusician(session, musicianID, new_band)
+		log.Println("Error to update bands in User is :", err)
+	}
+	log.Println(err)
+	return err
+}
+
 //LogoutMusician marks the musician as logged out
 func LogoutMusician(session *mgo.Session) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -110,6 +144,30 @@ func LogoutMusician(session *mgo.Session) func(http.ResponseWriter, *http.Reques
 		}
 
 		Data, _ := json.Marshal(profileLogoutResponse)
+		JSON(string(Data))(w, r)
+
+		return
+	}
+}
+
+//GetBandsAssociated gets all the bands with which the user is associated
+func GetBandsAssociated(session *mgo.Session) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		Vars := mux.Vars(r)
+		musicianID := Vars["id"]
+		log.Println("BandsAssociated called")
+		var bandResponse BandResponse
+		bandResponse.User = GetMusician(session, musicianID)
+		bands := GetBandByUserId(session, musicianID)
+		log.Println("Bands are :", bands)
+		log.Println(len(bands))
+		if len(bands) > 0 {
+			bandResponse.Success = true
+			bandResponse.Data = bands
+		} else {
+			bandResponse.Success = false
+		}
+		Data, _ := json.Marshal(bandResponse)
 		JSON(string(Data))(w, r)
 
 		return

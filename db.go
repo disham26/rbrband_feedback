@@ -29,10 +29,12 @@ func InitDB() *mgo.Session {
 func InsertMusicianFromFB(session *mgo.Session, token string, id string) (string, error) {
 	log.Println("Creating a new musician")
 	var err error
-	res, _ := fb.Get("/"+id, fb.Params{
+	res, err := fb.Get("/"+id, fb.Params{
 		"fields":       "first_name,name,id,birthday,email,gender,location,link,picture{url},videos{id}",
 		"access_token": token,
 	})
+	log.Println(res)
+	log.Println("Error to create the profile is :", err)
 	var user User
 	res.Decode(&user)
 	if user.Name != "" {
@@ -129,4 +131,13 @@ func GenerateQRCodeString(session *mgo.Session, id string, r *http.Request) User
 	c := session.DB(creds.MONGO_DB).C(creds.MONGO_MUSICIAN_COLLECTION)
 	c.Update(bson.M{"id": id}, bson.M{"$set": bson.M{"qr": encoded}})
 	return GetMusician(session, id)
+}
+
+//GetBandByUserId finds and sends the band document from the collection
+func GetBandByUserId(session *mgo.Session, id string) []Band {
+	result := []Band{}
+	c := session.DB(creds.MONGO_DB).C(creds.MONGO_BANDS_COLLECTION)
+	c.Find(bson.M{"members.id": id}).All(&result)
+	log.Println(len(result))
+	return result
 }

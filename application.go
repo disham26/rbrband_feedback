@@ -34,12 +34,16 @@ func main() {
 	r.HandleFunc("/signup", SignupHandler(session)).Methods("GET")
 	r.HandleFunc("/profile/{id}", ProfileHandler(session))
 	r.HandleFunc("/feedback/{id}", GuestFeedback(session))
+	r.HandleFunc("/super", Index2Handler(session))
+	r.HandleFunc("/band/{id}/qr", GetQRHandler(session))
+	r.HandleFunc("/band/{id}", BandProfileHandler(session))
 
 	//APIs here
 	api.HandleFunc("/profileLogout", ProfileLogout(session)).Methods("POST")
 	api.HandleFunc("/profileLogout/{id}", LogoutMusician(session))
 	api.HandleFunc("/profileCheck/{id}", ProfileCheck(session))
 	api.HandleFunc("/signup/{id}/{token}", ProfileCheck(session))
+	api.HandleFunc("/bandsAssociated/{id}", GetBandsAssociated(session))
 
 	//ListenAndServe
 	http.ListenAndServe(":"+port, r)
