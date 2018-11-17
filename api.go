@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	mgo "gopkg.in/mgo.v2"
@@ -101,15 +103,22 @@ func SignupMusician(session *mgo.Session) func(http.ResponseWriter, *http.Reques
 }
 
 //CreateBand api to create a band
-func CreateBand(session *mgo.Session, bandName string, bandLocation string, bandContact string, bandCharge string, bandGenre string, bandDesc string, musicianID string) error {
+func CreateBand(session *mgo.Session, bandName string, bandLocation string, bandContact string, bandCharge string, bandGenre string, bandDesc string, musicianID string, r *http.Request) error {
 	var band Band
-	var users []User
-	users = append(users, GetMusician(session, musicianID))
+
+	var musiciansID []string
+	musiciansID = append(musiciansID, musicianID)
 	band.BandCreator = musicianID
-	band.Members = users
+	band.Rating = 0.0
+
+	t := time.Now()
+	date := fmt.Sprintf("%d%d%d%d%d%d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	band.ID = musicianID + date
+	band.Members = musiciansID
 	band.BandName = bandName
 	band.Location = bandLocation
 	band.Contact = bandContact
+	band.GuestsRated = 0
 	band.Charges, _ = strconv.Atoi(bandCharge)
 	band.Genre = bandGenre
 	band.Description = bandDesc
@@ -117,6 +126,7 @@ func CreateBand(session *mgo.Session, bandName string, bandLocation string, band
 	if err == nil {
 		//Update the Musician with bands associated
 		//user := GetMusician(session, musicianID)
+		GenerateQRCodeString(session, new_band.ID, r)
 		err := UpdateBandCountMusician(session, musicianID, new_band)
 		log.Println("Error to update bands in User is :", err)
 	}

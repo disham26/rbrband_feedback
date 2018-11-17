@@ -33,10 +33,10 @@ func main() {
 	r.HandleFunc("/", IndexHandler(session))
 	r.HandleFunc("/signup", SignupHandler(session)).Methods("GET")
 	r.HandleFunc("/profile/{id}", ProfileHandler(session))
-	r.HandleFunc("/feedback/{id}", GuestFeedback(session))
+	r.HandleFunc("/feedback/{band_id}", GuestFeedback(session))
 	r.HandleFunc("/super", Index2Handler(session))
 	r.HandleFunc("/band/{id}/qr", GetQRHandler(session))
-	r.HandleFunc("/band/{id}", BandProfileHandler(session))
+	r.HandleFunc("/band/{user_id}/{band_id}", BandProfileHandler(session))
 
 	//APIs here
 	api.HandleFunc("/profileLogout", ProfileLogout(session)).Methods("POST")

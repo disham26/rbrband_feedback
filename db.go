@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"rbrband/rbrband_feedback/creds"
+	"strconv"
 	"time"
 
 	fb "github.com/huandu/facebook"
@@ -28,6 +29,7 @@ func InitDB() *mgo.Session {
 //if yes, only update will be called, else a new document will be inserted in the collection "musicians" in DB "users"
 func InsertMusicianFromFB(session *mgo.Session, token string, id string) (string, error) {
 	log.Println("Creating a new musician")
+	log.Println("id is :", id)
 	var err error
 	res, err := fb.Get("/"+id, fb.Params{
 		"fields":       "first_name,name,id,birthday,email,gender,location,link,picture{url},videos{id}",
@@ -40,6 +42,8 @@ func InsertMusicianFromFB(session *mgo.Session, token string, id string) (string
 	if user.Name != "" {
 		user.IsLoggedIn = true
 		user.UTS = time.Now()
+		user.Rating = 0
+		user.GuestsRated = 0
 		c := session.DB(creds.MONGO_DB).C(creds.MONGO_MUSICIAN_COLLECTION)
 		err = c.Insert(user)
 		if err != nil {
@@ -85,7 +89,7 @@ func CheckMusicianExistByID(session *mgo.Session, id string) bool {
 func UpdateLoggedStatusByID(session *mgo.Session, id string, status bool) bool {
 	log.Println("inside UpdateLoggedStatusByID for ", id, status)
 	c := session.DB(creds.MONGO_DB).C(creds.MONGO_MUSICIAN_COLLECTION)
-	err := c.Update(bson.M{"id": id}, bson.M{"$set": bson.M{"isloggedin": status}})
+	err := c.Update(bson.M{"id": id}, bson.M{"$set": bson.M{"isLoggedIn": status}})
 	log.Println("Error:", err)
 	if err != nil {
 		return false
@@ -94,10 +98,101 @@ func UpdateLoggedStatusByID(session *mgo.Session, id string, status bool) bool {
 	return true
 }
 
+//UpdateBandRating function to update the rating of the band
+func UpdateBandRating(session *mgo.Session, band Band, rating string) error {
+	log.Println("inside UpdateBandRating for ", band.ID, rating)
+	log.Println("Current Rating is :", band.Rating)
+	log.Println("Guests rated:", band.GuestsRated)
+	//log.Println("Full band details are:", band)
+	log.Println("Increasing guests rated:")
+	var err error
+	newGuestsRated := band.GuestsRated + 1
+	ratingFloat, _ := strconv.ParseFloat(rating, 64)
+	c := session.DB(creds.MONGO_DB).C(creds.MONGO_BANDS_COLLECTION)
+	if band.GuestsRated == 0 {
+		log.Println("So we are here")
+		err = c.Update(bson.M{"id": band.ID}, bson.M{"$set": bson.M{"guests_rated": 1}})
+		//log.Println("First error:", err)
+		ratingFloat, _ := strconv.ParseFloat(rating, 64)
+		err = c.Update(bson.M{"id": band.ID}, bson.M{"$set": bson.M{"rating": FloatToTwo(ratingFloat)}})
+		//log.Println("Second error:", err)
+	} else {
+		massiveRating := float64(band.GuestsRated) * band.Rating
+		log.Println("Guests Rated:", band.GuestsRated)
+		log.Println("Float guests rated:", float64(band.GuestsRated))
+		log.Println("Band Rating:", band.Rating)
+		log.Println("MassiveRating is :", massiveRating)
+		newMassiveRating := massiveRating + ratingFloat
+
+		newRating := newMassiveRating / float64(newGuestsRated)
+		//newRating := ((band.Rating * float64(band.GuestsRated)) + ratingFloat) / float64(band.GuestsRated+1)
+
+		err = c.Update(bson.M{"id": band.ID}, bson.M{"$set": bson.M{"guests_rated": newGuestsRated}})
+		err = c.Update(bson.M{"id": band.ID}, bson.M{"$set": bson.M{"rating": FloatToTwo(newRating)}})
+
+	}
+
+	return err
+}
+
+//UpdateMusiciansRating function to update the rating of the musician
+func UpdateMusiciansRating(session *mgo.Session, bandID string, rating string) error {
+	band := GetBand(session, bandID)
+	log.Println("Musicians in the band are:", len(band.Members))
+	var err error
+	for _, musicianID := range band.Members {
+		log.Println("Updating rating for :", musicianID)
+		log.Println(musicianID)
+		musician := GetMusician(session, musicianID)
+		log.Println("Current Musician Rating is :", musician.Rating)
+		log.Println("Name :", musician.FirstName)
+		log.Println("Guests rated:", musician.GuestsRated)
+		//log.Println("Full band details are:", band)
+		log.Println("Increasing guests rated:")
+
+		newGuestsRated := musician.GuestsRated + 1
+		ratingFloat, _ := strconv.ParseFloat(rating, 64)
+		c := session.DB(creds.MONGO_DB).C(creds.MONGO_MUSICIAN_COLLECTION)
+		if musician.GuestsRated == 0 {
+			log.Println("So we are here")
+			err = c.Update(bson.M{"id": musician.ID}, bson.M{"$set": bson.M{"guests_rated": 1}})
+			//log.Println("First error:", err)
+			ratingFloat, _ := strconv.ParseFloat(rating, 64)
+			err = c.Update(bson.M{"id": musician.ID}, bson.M{"$set": bson.M{"rating": FloatToTwo(ratingFloat)}})
+			//log.Println("Second error:", err)
+		} else {
+			massiveRating := float64(musician.GuestsRated) * musician.Rating
+			log.Println("Guests Rated:", musician.GuestsRated)
+			log.Println("Float guests rated:", float64(musician.GuestsRated))
+			log.Println("Band Rating:", musician.Rating)
+			log.Println("MassiveRating is :", massiveRating)
+			newMassiveRating := massiveRating + ratingFloat
+
+			newRating := newMassiveRating / float64(newGuestsRated)
+			//newRating := ((band.Rating * float64(band.GuestsRated)) + ratingFloat) / float64(band.GuestsRated+1)
+
+			err = c.Update(bson.M{"id": musician.ID}, bson.M{"$set": bson.M{"guests_rated": newGuestsRated}})
+			err = c.Update(bson.M{"id": musician.ID}, bson.M{"$set": bson.M{"rating": FloatToTwo(newRating)}})
+		}
+
+	}
+
+	return err
+}
+
 //GetMusician finds and sends the musician document from the collection
 func GetMusician(session *mgo.Session, id string) User {
 	result := User{}
 	c := session.DB(creds.MONGO_DB).C(creds.MONGO_MUSICIAN_COLLECTION)
+	c.Find(bson.M{"id": id}).One(&result)
+
+	return result
+}
+
+//GetBand function to be called to check if a band exists in DB
+func GetBand(session *mgo.Session, id string) Band {
+	result := Band{}
+	c := session.DB(creds.MONGO_DB).C(creds.MONGO_BANDS_COLLECTION)
 	c.Find(bson.M{"id": id}).One(&result)
 
 	return result
@@ -117,27 +212,28 @@ func UpdateBandCountMusician(session *mgo.Session, id string, band Band) error {
 
 //GetQRCodeStringByID function gets QR code string of the id
 func GetQRCodeStringByID(session *mgo.Session, id string) string {
-	result := User{}
-	c := session.DB(creds.MONGO_DB).C(creds.MONGO_MUSICIAN_COLLECTION)
+	result := Band{}
+	c := session.DB(creds.MONGO_DB).C(creds.MONGO_BANDS_COLLECTION)
 	c.Find(bson.M{"id": id}).One(&result)
 
-	return result.QR
+	return result.QRCode
 }
 
 //GenerateQRCodeString function to generate and save the QR code in DB
-func GenerateQRCodeString(session *mgo.Session, id string, r *http.Request) User {
-	png, _ := qrcode.Encode(r.Host+r.URL.String(), qrcode.Medium, 256)
+func GenerateQRCodeString(session *mgo.Session, band_id string, r *http.Request) {
+	url := r.Host + "/feedback" + "/" + band_id
+	png, _ := qrcode.Encode(url, qrcode.Medium, 256)
 	encoded := base64.StdEncoding.EncodeToString(png)
-	c := session.DB(creds.MONGO_DB).C(creds.MONGO_MUSICIAN_COLLECTION)
-	c.Update(bson.M{"id": id}, bson.M{"$set": bson.M{"qr": encoded}})
-	return GetMusician(session, id)
+	c := session.DB(creds.MONGO_DB).C(creds.MONGO_BANDS_COLLECTION)
+	c.Update(bson.M{"id": band_id}, bson.M{"$set": bson.M{"qrcode": encoded}})
+
 }
 
 //GetBandByUserId finds and sends the band document from the collection
 func GetBandByUserId(session *mgo.Session, id string) []Band {
 	result := []Band{}
 	c := session.DB(creds.MONGO_DB).C(creds.MONGO_BANDS_COLLECTION)
-	c.Find(bson.M{"members.id": id}).All(&result)
+	c.Find(bson.M{"members": id}).All(&result)
 	log.Println(len(result))
 	return result
 }

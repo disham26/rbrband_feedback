@@ -20,7 +20,22 @@ type Page struct {
 	UserID      string
 }
 
-//Page Sample struct
+//FeedbackPage Sample struct
+type FeedbackPage struct {
+	Title       string
+	Text        string
+	StaticHost  string
+	JSON        string
+	Config      string
+	LoggedIn    bool
+	CurrentPage string
+	FbID        string
+	UserID      string
+	Band        Band
+	Message     string
+}
+
+//ProfilePage Sample struct
 type ProfilePage struct {
 	Title        string
 	Text         string
@@ -34,6 +49,24 @@ type ProfilePage struct {
 	QR           string
 	UserID       string
 	User         User
+	BandResponse string
+}
+
+//BandPage Sample struct
+type BandPage struct {
+	Title        string
+	Text         string
+	StaticHost   string
+	JSON         string
+	Email        string
+	Config       string
+	LoggedIn     bool
+	CurrentPage  string
+	FbID         string
+	QR           string
+	UserID       string
+	User         User
+	Band         Band
 	BandResponse string
 }
 
@@ -62,34 +95,39 @@ type ImageURL struct {
 
 //User struct has all the details of a musician profile
 type User struct {
-	FirstName       string         `param:"first_name" json:"first_name"`
-	Name            string         `json:"name"`
-	ID              string         `json:"id"`
-	Birthday        string         `json:"birthday"`
-	Email           string         `json:"email"`
-	Gender          string         `json:"gender"`
-	Location        FBLocation     `json:"location"`
-	Link            string         `json:"link"`
-	IsLoggedIn      bool           `json:"isLoggedIn"`
-	UTS             time.Time      `json:"uts"`
-	QR              string         `json:"QR"`
-	BandsAssociated int            `json:"bandsAssociated"`
-	ProfilePic      ProfilePicture `json:"picture"`
-	Bands           []Band
+	FirstName       string         `param:"first_name" json:"first_name" bson:"first_name"`
+	Name            string         `json:"name" bson:"name"`
+	ID              string         `json:"id" bson:"id"`
+	Birthday        string         `json:"birthday" bson:"birthday"`
+	Email           string         `json:"email" bson:"email"`
+	Gender          string         `json:"gender" bson:"gender"`
+	Location        FBLocation     `json:"location" bson:"location"`
+	Link            string         `json:"link" bson:"link"`
+	IsLoggedIn      bool           `json:"isLoggedIn" bson:"isLoggedIn"`
+	UTS             time.Time      `json:"uts" bson:"uts"`
+	BandsAssociated int            `json:"bands_associated" uts:"bands_associated"`
+	ProfilePic      ProfilePicture `json:"picture" bson:"profile_pic" `
+	Bands           []Band         `json:"bands" bson:"bands"`
+	Rating          float64        `json:"rating" bson:"rating"`
+	GuestsRated     int            `json:"guests_rated" bson:"guests_rated"`
 }
 
 //Band struct
 type Band struct {
-	BandName    string    `json:"band_name"`
-	Members     []User    `json:"user"`
-	Genre       string    `json:"genre"`
-	Description string    `json:"descroption"`
-	Location    string    `json:"location"`
-	Contact     string    `json:"contact"`
-	Age         time.Time `json:"age"`
-	Charges     int       `json:"charges"`
-	BandCreator string    `json:"band_creator"`
-	UTS         time.Time `json:"uts"`
+	ID          string    `json:"id" bson:"id"`
+	BandName    string    `json:"band_name" bson:"band_name"`
+	Members     []string  `json:"members" bson:"members"`
+	Genre       string    `json:"genre" bson:"genre"`
+	Description string    `json:"description" bson:"description"`
+	Location    string    `json:"location" bson:"location"`
+	Contact     string    `json:"contact" bson:"contect"`
+	Age         time.Time `json:"age" bson:"age"`
+	Charges     int       `json:"charges" bson:"charges" `
+	BandCreator string    `json:"band_creator" bson:"band_creator"`
+	UTS         time.Time `json:"uts" bson:"uts"`
+	Rating      float64   `json:"rating" bson:"rating"`
+	QRCode      string    `json:"qrcode" bson:"qrcode"`
+	GuestsRated int       `json:"guests_rated" bson:"guests_rated"`
 }
 
 //Gig struct
@@ -99,6 +137,7 @@ type Gig struct {
 	VenueName    string
 	VenueCity    string
 	VenueContact string
+	Band         Band
 }
 
 //Blog struct
